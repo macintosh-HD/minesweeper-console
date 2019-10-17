@@ -1,3 +1,7 @@
+from IPython.display import clear_output
+import random as rand
+import os
+
 import field as f
 
 class Board:
@@ -34,6 +38,7 @@ class Board:
                 if not self.fields[x*y].mine and not self.fields[x*y].discovered:
                     self.fields[x*y].placeMine()
                     placed = True
+        self.initializeFields()
 
     def getMinesLeft(self):
         mineCounter = 0
@@ -73,11 +78,14 @@ class Board:
                     line += " "
 
                 currField = self.fields[w*(h + 1)]
+                # print(currField)
 
                 if currField.isFlagged():
                     line += "f"
-                elif currField.isDiscovered():
+                elif currField.isDiscovered() and currField.minesInSurrounding == 0:
                     line += "_"
+                elif currField.isDiscovered():
+                    line += str(currField.minesInSurrounding)
                 else:
                     line += "#"
 
@@ -115,22 +123,25 @@ class Board:
             return False
         if not self.played:
             self.played = True
+            field.discover()
             self.generateMines()
+            field.discovered = False
         self.openFields(self.playerX, self.playerY)
         return True
 
     def openFields(self, x: int, y: int):
         field = self.fields[x * (y + 1)]
-        if not field.isDiscovered():
-            field = field.discover()
+        if not field.isDiscovered() and not field.isMineUnderneath():
+            # field = field.discover()
+            field.discover()
             if field.minesInSurrounding == 0:
                 if x > 0:
                     self.openFields(x - 1, y)
-                if x < self.width:
+                if x < self.width - 1:
                     self.openFields(x + 1, y)
                 if y > 0:
                     self.openFields(x, y - 1)
-                if y < self.height:
+                if y < self.height - 1:
                     self.openFields(x, y + 1)
 
     def isFinished(self):
@@ -143,3 +154,18 @@ class Board:
                 elif field.isMineUnderneath() and not field.isFlagged():
                     finished = finished and False
 
+    def initializeFields(self):
+        for h in range(self.height):
+            for w in range(self.width):
+                fieldIndex = w * (h + 1)
+                minesInSurrounding = self.getMinesInSurroundingForField(w, h)
+                print(minesInSurrounding)
+                self.fields[fieldIndex].setNeighbourMines(minesInSurrounding)
+
+    def getMinesInSurroundingForField(self, x: int, y: int):
+        minesInSurrounding = 0
+        for newX in range(x - 1, x + 2):
+            for newY in range(y - 1, y + 2):
+                if x >= 0 and x < self.width and y >= 0 and y < self.height and not x == newX and not y == newY and self.fields[x * (y + 1)].isMineUnderneath():
+                    minesInSurrounding += 1
+        return minesInSurrounding
